@@ -1,5 +1,6 @@
 require 'minitest/autorun'
 require 'timeout'
+require 'pry'
 
 class CustomerSuccessBalancing
   def initialize(customer_success, customers, away_customer_success)
@@ -10,7 +11,44 @@ class CustomerSuccessBalancing
 
   # Returns the ID of the customer success with most customers
   def execute
-    # Write your solution here
+    matching_hash = build_matching_hash
+
+    @customers.each do |customer|
+      # Find the customer success with least customers which has score greater than the customer success score
+      available_cs = available_customer_success(matching_hash, customer)
+      # Assign customer to customer success with least customers
+
+      if available_cs
+        matching_hash[available_cs[0]][:customers] << customer[:id]
+      end
+    end
+
+    customer_success_with_max_customers(matching_hash)
+  end
+
+  private def available_customer_success(matching_hash, customer)
+    matching_hash
+      .select { |_, v| v[:score] >= customer[:score] }
+      .min_by { |_, v| v[:customers].length && v[:score] }
+  end
+
+  private def customer_success_with_max_customers(matching_hash)
+    max_customers = matching_hash.group_by { |_, v| v[:customers].length }.max_by { |customers_size| customers_size }
+    max_customers[1].length > 1 ? 0 : max_customers[1].first[0]
+  end
+
+  private def build_matching_hash
+    matching_hash = {}
+    @customer_success.each do |customer_success|
+      unless @away_customer_success.include?(customer_success[:id])
+        matching_hash[customer_success[:id]] = {
+          score: customer_success[:score],
+          customers: []
+        }
+      end
+    end
+
+    matching_hash
   end
 end
 
