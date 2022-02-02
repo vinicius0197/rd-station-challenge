@@ -18,9 +18,7 @@ class CustomerSuccessBalancing
       available_cs = available_customer_success(matching_hash, customer)
       # Assign customer to customer success with least customers
 
-      if available_cs
-        matching_hash[available_cs[0]][:customers] << customer[:id]
-      end
+      matching_hash[available_cs[0]][:customers] << customer[:id] if available_cs
     end
 
     customer_success_with_max_customers(matching_hash)
@@ -40,12 +38,12 @@ class CustomerSuccessBalancing
   private def build_matching_hash
     matching_hash = {}
     @customer_success.each do |customer_success|
-      unless @away_customer_success.include?(customer_success[:id])
-        matching_hash[customer_success[:id]] = {
-          score: customer_success[:score],
-          customers: []
-        }
-      end
+      next if @away_customer_success.include?(customer_success[:id])
+
+      matching_hash[customer_success[:id]] = {
+        score: customer_success[:score],
+        customers: []
+      }
     end
 
     matching_hash
@@ -74,7 +72,7 @@ class CustomerSuccessBalancingTests < Minitest::Test
   def test_scenario_three
     balancer = CustomerSuccessBalancing.new(
       build_scores(Array(1..999)),
-      build_scores(Array.new(10000, 998)),
+      build_scores(Array.new(10_000, 998)),
       [999]
     )
     result = Timeout.timeout(1.0) { balancer.execute }
