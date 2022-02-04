@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'minitest/autorun'
 require 'timeout'
 require 'pry'
@@ -11,42 +13,52 @@ class CustomerSuccessBalancing
 
   # Returns the ID of the customer success with most customers
   def execute
-    matching_hash = build_matching_hash
+    customer_success_to_customer_hash = build_customer_success_to_customer_hash
 
     @customers.each do |customer|
-      # Find the customer success with least customers which has score greater than the customer success score
-      available_cs = available_customer_success(matching_hash, customer)
-      # Assign customer to customer success with least customers
-
-      matching_hash[available_cs[0]][:customers] << customer[:id] if available_cs
+      available_customer_success = find_available_customer_success(customer_success_to_customer_hash, customer)
+      assign_customer_success_to_customer(customer_success_to_customer_hash, available_customer_success, customer)
     end
 
-    customer_success_with_max_customers(matching_hash)
+    find_customer_success_with_max_customers(customer_success_to_customer_hash)
   end
 
-  private def available_customer_success(matching_hash, customer)
-    matching_hash
-      .select { |_, v| v[:score] >= customer[:score] }
-      .min_by { |_, v| v[:customers].length && v[:score] }
+  private def assign_customer_success_to_customer(customer_success_to_customer_hash, customer_success, customer)
+    if customer_success
+      get_customers_from_customer_success(customer_success_to_customer_hash,
+                                          customer_success) << customer[:id]
+    end
   end
 
-  private def customer_success_with_max_customers(matching_hash)
-    max_customers = matching_hash.group_by { |_, v| v[:customers].length }.max_by { |customers_size| customers_size }
+  private def get_customers_from_customer_success(customer_success_to_customer_hash, customer_success)
+    customer_success_to_customer_hash[customer_success[0]][:customers]
+  end
+
+  private def find_available_customer_success(customer_success_to_customer_hash, customer)
+    customer_success_to_customer_hash
+      .select { |_, customer_success| customer_success[:score] >= customer[:score] }
+      .min_by { |_, customer_success| customer_success[:customers].length && customer_success[:score] }
+  end
+
+  private def find_customer_success_with_max_customers(customer_success_to_customer_hash)
+    max_customers = customer_success_to_customer_hash.group_by do |_, customer_success|
+                      customer_success[:customers].length
+                    end.max_by { |customers_size| customers_size }
     max_customers[1].length > 1 ? 0 : max_customers[1].first[0]
   end
 
-  private def build_matching_hash
-    matching_hash = {}
+  private def build_customer_success_to_customer_hash
+    customer_success_to_customer_hash = {}
     @customer_success.each do |customer_success|
       next if @away_customer_success.include?(customer_success[:id])
 
-      matching_hash[customer_success[:id]] = {
+      customer_success_to_customer_hash[customer_success[:id]] = {
         score: customer_success[:score],
         customers: []
       }
     end
 
-    matching_hash
+    customer_success_to_customer_hash
   end
 end
 
